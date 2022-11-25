@@ -79,7 +79,6 @@ function renderCart(data) {
   const totalPrice = document.querySelector('.totalPrice');
   let str = '';
 
-  // console.log(data);
   data.carts.forEach((item) => {
     str += `
       <tr>
@@ -92,8 +91,16 @@ function renderCart(data) {
         <td>NT$ ${item.product.price}</td>
         <td>
         <p >${item.quantity}</p>
-        <a class="fs-4 text-decoration-none me-4" href="#">+</a>
-        <a class="fs-4 text-decoration-none text-danger" href="#">-</a>
+        <a class="fs-4 text-decoration-none me-4" data-id="${
+  item.id
+}" data-numchange="plus" href="#"><span class="material-symbols-outlined">
+        add_circle
+        </span></a>
+        <a class="fs-4 text-decoration-none text-danger" data-id="${
+  item.id
+}" data-numchange="minus" href="#"><span class="material-symbols-outlined">
+        do_not_disturb_on
+        </span></a>
         </td>
         <td>NT$ ${item.product.price * item.quantity}</td>
         <td class="discardBtn">
@@ -142,11 +149,57 @@ function addCart(data) {
   });
 }
 
+// function plusCartNum() {
+//   axios.patch(`${Url}/customer/${apiPath}/carts`, {
+//     data: {
+//       id: '購物車 ID (String)',
+//       quantity: 6,
+//     },
+//   });
+// }
+
 // 修改購物車數量
 function updateCart(data) {
   const shoppingCartList = document.querySelector('.shoppingCart-list');
   shoppingCartList.addEventListener('click', (e) => {
     e.preventDefault();
+    const numBtn = e.target.closest('A');
+    const cartId = numBtn.dataset.id;
+
+    let numCheck = 1;
+    if (numCheck < 1) {
+      return;
+    }
+
+    data.carts.forEach((item) => {
+      if (item.id === cartId) {
+        if (numBtn.dataset.numchange === 'plus') {
+          // eslint-disable-next-line no-multi-assign, no-param-reassign
+          numCheck = item.quantity += 1;
+        } else if (numBtn.dataset.numchange === 'minus') {
+          // eslint-disable-next-line no-multi-assign, no-param-reassign
+          numCheck = item.quantity -= 1;
+        }
+      }
+    });
+
+    const newData = {
+      data: {
+        id: cartId,
+        quantity: numCheck,
+      },
+    };
+
+    axios
+      .patch(`${Url}/customer/${apiPath}/carts`, newData)
+      .then((res) => {
+        const updateCartData = res.data;
+        renderCart(updateCartData);
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.log(error);
+      });
   });
 }
 
@@ -158,6 +211,7 @@ function getCartData() {
       const cartData = res.data;
       renderCart(cartData);
       addCart(cartData);
+      updateCart(cartData);
     })
     .catch((error) => {
       // eslint-disable-next-line no-console
