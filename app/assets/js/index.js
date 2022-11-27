@@ -3,6 +3,13 @@
 const Url = 'https://livejs-api.hexschool.io/api/livejs/v1';
 const apiPath = 'key0329';
 
+// 增加千分位逗點
+function toThousands(x) {
+  const parts = x.toString().split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+
 // 渲染產品列表
 function renderProducts(arr) {
   const productList = document.querySelector('.productWrap');
@@ -15,8 +22,8 @@ function renderProducts(arr) {
         <img src="${item.images}" alt="">
         <a href="#" class="addCardBtn" data-id=${item.id}>加入購物車</a>
         <h3>${item.title}</h3>
-        <del class="originPrice">NT$ ${item.origin_price}</del>
-        <p class="nowPrice">NT$ ${item.price}</p>
+        <del class="originPrice">NT$ ${toThousands(item.origin_price)}</del>
+        <p class="nowPrice">NT$ ${toThousands(item.price)}</p>
     </li>
     `;
   });
@@ -68,7 +75,7 @@ function renderCart(data) {
             <p>${item.product.title}</p>
           </div>
         </td>
-        <td>NT$ ${item.product.price}</td>
+        <td>NT$ ${toThousands(item.product.price)}</td>
         <td>
         <p >${item.quantity}</p>
         <a class="fs-4 text-decoration-none me-4" data-id="${
@@ -82,7 +89,7 @@ function renderCart(data) {
         do_not_disturb_on
         </span></a>
         </td>
-        <td>NT$ ${item.product.price * item.quantity}</td>
+        <td>NT$ ${toThousands(item.product.price * item.quantity)}</td>
         <td class="discardBtn">
           <a href="#" class="material-icons" data-deleteid="${item.id}"> clear </a>
         </td>
@@ -91,7 +98,7 @@ function renderCart(data) {
   });
 
   shoppingCartList.innerHTML = str;
-  totalPrice.textContent = `NT$ ${data.finalTotal}`;
+  totalPrice.textContent = `NT$ ${toThousands(data.finalTotal)}`;
 }
 
 // 加入購物車
@@ -102,13 +109,6 @@ function addCart() {
       e.preventDefault();
       if (e.target.getAttribute('class') === 'addCardBtn') {
         const { id } = e.target.dataset;
-
-        // data.carts.forEach((item) => {
-        //   if (item.product.id === id) {
-        //     // eslint-disable-next-line no-multi-assign, no-param-reassign
-        //     numCheck = item.quantity += 1;
-        //   }
-        // });
 
         axios
           .post(`${Url}/customer/${apiPath}/carts`, {
@@ -203,31 +203,33 @@ function updateCart() {
 
 // 刪除全部購物車
 function deleteAllCart() {
-  const discardAllBtn = document.querySelector('.discardAllBtn');
-  discardAllBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    axios
-      .delete(`${Url}/customer/${apiPath}/carts`)
-      .then((res) => {
-        const deleteData = res.data;
-        renderCart(deleteData);
-        Swal.fire({
-          icon: 'success',
-          title: '已清空購物車',
-          showConfirmButton: false,
-          timer: 1500,
+  const deleteAllCarts = document.querySelector('.js-deleteAllCarts');
+  if (deleteAllCarts) {
+    deleteAllCarts.addEventListener('click', (e) => {
+      e.preventDefault();
+      axios
+        .delete(`${Url}/customer/${apiPath}/carts`)
+        .then((res) => {
+          const deleteData = res.data;
+          renderCart(deleteData);
+          Swal.fire({
+            icon: 'success',
+            title: '已清空購物車',
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        })
+        .catch((error) => {
+          // eslint-disable-next-line no-console
+          console.log(error);
+          Swal.fire({
+            title: '購物車已空',
+            showConfirmButton: false,
+            timer: 1500,
+          });
         });
-      })
-      .catch((error) => {
-        // eslint-disable-next-line no-console
-        console.log(error);
-        Swal.fire({
-          title: '購物車已空',
-          showConfirmButton: false,
-          timer: 1500,
-        });
-      });
-  });
+    });
+  }
 }
 
 // 刪除特定購物車
@@ -352,6 +354,61 @@ function submitOrder() {
   }
 }
 
+// 表單驗證
+function validateOrderForm() {
+  const inputs = document.querySelectorAll('input[name],select[name]');
+  const form = document.querySelector('.orderInfo-form');
+
+  const constraints = {
+    姓名: {
+      presence: {
+        message: '必填欄位',
+      },
+    },
+    電話: {
+      presence: {
+        message: '必填欄位',
+      },
+      length: {
+        minimum: 8,
+        message: '需超過 8 碼',
+      },
+    },
+    Email: {
+      presence: {
+        message: '必填欄位',
+      },
+      email: {
+        message: '格式錯誤',
+      },
+    },
+    寄送地址: {
+      presence: {
+        message: '必填欄位',
+      },
+    },
+    交易方式: {
+      presence: {
+        message: '必填欄位',
+      },
+    },
+  };
+
+  inputs.forEach((item) => {
+    item.addEventListener('blur', () => {
+      // eslint-disable-next-line no-param-reassign
+      item.nextElementSibling.textContent = '';
+      const errors = validate(form, constraints) || '';
+
+      if (errors) {
+        Object.keys(errors).forEach((keys) => {
+          document.querySelector(`[data-message="${keys}"]`).textContent = errors[keys];
+        });
+      }
+    });
+  });
+}
+
 // 網頁初始化
 function init() {
   getProductData();
@@ -361,6 +418,7 @@ function init() {
   updateCart();
   deleteCart();
   submitOrder();
+  validateOrderForm();
 }
 
 init();
